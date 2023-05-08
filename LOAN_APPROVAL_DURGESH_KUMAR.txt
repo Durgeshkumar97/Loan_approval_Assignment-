@@ -1,0 +1,99 @@
+DROP TABLE IF EXISTS  Loan_details;
+CREATE TABLE Loan_details (
+    LoanNr_ChkDgt BIGINT PRIMARY KEY,
+    Name VARCHAR(255),
+    city VARCHAR(255),
+    state VARCHAR(255),
+    zip VARCHAR(255),
+    bank VARCHAR(100),
+    bankstate VARCHAR(255),
+    NAICS INTEGER,
+    ApprovalDate DATE,
+    ApprovalFY VARCHAR(100),
+    Term INTEGER,
+    NoEmp INTEGER,
+    NewExist INTEGER,
+    CreateJob INTEGER,
+    RetainedJob INTEGER,
+    FranchiseCode INTEGER,
+    UrbanRural INTEGER,
+    RevLineCr VARCHAR(2),
+    LowDoc VARCHAR(2),
+    ChgOffDate DATE,
+    DisbursementDate DATE,
+    DisbursementGross VARCHAR(20),
+    BalanceGross VARCHAR(20),
+    MIS_Status VARCHAR(20),
+    ChgOffPrinGr VARCHAR(20),
+    GrAppv VARCHAR(20),
+    SBA_Appv VARCHAR(20)
+);
+
+SELECT * FROM loan_details;
+-----------------------------------------------------------------------------------------
+select Name from loan_details where 'GrAppv' = '$5,000,000';
+SELECT Name, MIS_Status
+FROM loan_details
+GROUP BY MIS_Status, Name;
+
+--  ------------------------------------------------------------------------------
+SELECT newexist, Name 
+FROM loan_details 
+GROUP BY newexist, Name;
+
+-- ------------------------------------------------------------------------------------
+SELECT MAX(Name) AS Name, MIS_Status, newexist,
+    CASE
+        WHEN NewExist = 2 THEN 'new_business'
+        WHEN NewExist = 1 THEN 'existing_business'
+        ELSE 'not_defined'
+    END AS BUSINESS_STATUS
+FROM loan_details
+GROUP BY MIS_Status, newexist, BUSINESS_STATUS;
+
+
+---------------------------------------------------------------------------------------------------
+SELECT Name, MIS_Status, COUNT(DisbursementGross)
+FROM loan_details
+GROUP BY MIS_Status, name;
+
+-- ----------------------------------------------------------------------------------------------
+SELECT name,MIS_Status,count(RetainedJob) from loan_details group by MIS_Status,name;
+-- ----------------------------------------------------------------------------------------------------
+SELECT name,MIS_Status,count(GrAppv) from loan_details group by MIS_Status,name;
+-------------------------------------------------------------------------------------------
+
+SELECT Name, ApprovalDate, MIS_Status
+FROM loan_details
+WHERE ApprovalDate < DATE '2012-01-01' AND MIS_Status = 'P I F'
+GROUP BY ApprovalDate, MIS_Status, Name
+LIMIT 5;
+
+
+-- ---------------------------------------------------------------
+-- Write out the Final Query to identify the approved/Declined Cohorts
+-- Using Window functions, explore the top 3, 5 or 10 customers based on certain metrics (Eg - Find the top 5 customers with highest bank balance who have not defaulted on a loan in the last 2 years). This will help you understand your ideal loan applicants.
+
+WITH cte AS (
+  SELECT name, ApprovalDate, MIS_Status, GrAppv,
+    row_number() over(PARTITION BY MIS_status  ORDER BY GrAppv DESC) AS rn
+  FROM loan_details
+)
+SELECT name, ApprovalDate, MIS_Status, GrAppv
+FROM cte
+WHERE ApprovalDate < DATE '2012-01-01' AND MIS_Status='P I F' 
+LIMIT 5;
+
+-------------------------------------------------------------------------------------------------
+-- Write out your final query that creates a column in the table (Refer to the commands in C3) which says whether a customer is eligible for a loan or not based on the criterion you set in the previous component.
+
+
+SELECT Name, MIS_Status,
+  CASE
+    WHEN MIS_Status = 'CHGOFF' THEN 'Not eligible for loan'
+    WHEN MIS_Status = 'P I F' THEN 'Eligible for loan'
+    ELSE 'Not defined'
+  END AS Loan_Eligibility
+FROM loan_details
+LIMIT 10000;
+
